@@ -1,0 +1,44 @@
+# RunPod serverless Tier A talking-avatar worker — Python 3.10.
+#
+# torch / torchvision / torchaudio are installed SEPARATELY in the Dockerfile from the cu128
+# index URL (they must carry Blackwell sm_120 kernels) — do NOT pin them here or pip may pull
+# a CPU build over the GPU one.
+
+# --- RunPod SDK ---
+runpod==1.7.0
+
+# --- IO ---
+requests==2.32.3
+
+# --- TTS: Coqui XTTS-v2 (voice clone + multilingual) ---
+# Coqui's PyPI package is `TTS` (a.k.a. coqui-tts fork on newer Pythons). Pin a known-good line.
+coqui-tts  # maintained fork of Coqui TTS; same `TTS` import, relaxed numpy/torch pins
+
+# --- Lip-sync (MuseTalk / SadTalker) shared deps ---
+# MuseTalk uses OpenAI whisper features; SadTalker uses face / 3DMM models. These cover both;
+# the repos also carry their own requirements.txt which the Dockerfile installs.
+openai-whisper==20231117
+opencv-python-headless==4.10.0.84
+imageio==2.34.2
+imageio-ffmpeg==0.5.1
+librosa==0.10.2.post1
+soundfile==0.12.1
+# numpy left unpinned — resolved by coqui-tts/librosa/whisper together to avoid version conflicts
+scipy==1.13.1
+einops==0.8.0
+omegaconf==2.3.0
+huggingface_hub==0.24.6
+safetensors==0.4.4
+tqdm==4.66.5
+
+# --- Optional: R2 / S3 upload path for longer clips (handler.maybe_upload) ---
+boto3==1.34.162
+
+# --- Generative video (Tier B): LTX-Video via diffusers' own documented pipeline API ---
+diffusers==0.32.2
+transformers==4.46.3
+accelerate==1.1.1
+sentencepiece==0.2.0   # T5 tokenizer (LTX-Video's text encoder)
+
+# --- Optional fallback TTS (Kokoro) — uncomment if XTTS init ever breaks on the target GPU ---
+# kokoro==0.3.4
