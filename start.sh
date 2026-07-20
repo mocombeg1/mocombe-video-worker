@@ -12,12 +12,12 @@ set -euo pipefail
 CACHE_DIR="${MODEL_CACHE_DIR:-/runpod-volume/models}"
 mkdir -p "$CACHE_DIR"
 
-# LEAN Tier-B image: only the LTX-Video weights are needed (no avatar Tier-A models).
-if [ ! -f "$CACHE_DIR/.ltx_ready" ] \
-   || [ ! -d "$CACHE_DIR/ltx-video" ]; then
-    echo "[start] fetching LTX-Video weights into $CACHE_DIR (first cold start) ..."
-    python /app/download_models.py ltx || echo "[start] WARN: model fetch reported errors; handler will retry lazily"
-    touch "$CACHE_DIR/.ltx_ready" || true
+# Tier-A avatar image: fetch MuseTalk (lip-sync) + warm XTTS (voice clone). No LTX here.
+if [ ! -f "$CACHE_DIR/.avatar_ready" ] \
+   || [ ! -d "$CACHE_DIR/musetalk" ]; then
+    echo "[start] fetching MuseTalk + XTTS weights into $CACHE_DIR (first cold start) ..."
+    python /app/download_models.py musetalk xtts || echo "[start] WARN: model fetch reported errors; handler will retry lazily"
+    touch "$CACHE_DIR/.avatar_ready" || true
 else
     echo "[start] weights present in $CACHE_DIR (warm cache)"
 fi
