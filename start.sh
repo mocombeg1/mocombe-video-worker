@@ -25,4 +25,4 @@ else
 fi
 
 echo "[start] launching serverless handler"
-exec python -u /app/handler.py
+exec python -u /app/rp_handler.py

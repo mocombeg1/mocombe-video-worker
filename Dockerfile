@@ -121,7 +121,7 @@ RUN rm -rf /app/MuseTalk/models /app/SadTalker/checkpoints \
     && ln -s /runpod-volume/models/sadtalker/checkpoints /app/SadTalker/checkpoints
 
 # --- Worker code ---
-COPY handler.py        /app/handler.py
+COPY rp_handler.py     /app/rp_handler.py
 COPY download_models.py /app/download_models.py
 COPY start.sh          /app/start.sh
 RUN chmod +x /app/start.sh
