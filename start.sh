@@ -12,14 +12,12 @@ set -euo pipefail
 CACHE_DIR="${MODEL_CACHE_DIR:-/runpod-volume/models}"
 mkdir -p "$CACHE_DIR"
 
-# Marker so we only attempt the (idempotent) fetch once per volume unless weights look incomplete.
-if [ ! -f "$CACHE_DIR/.weights_ready" ] \
-   || [ ! -d "$CACHE_DIR/musetalk" ] \
-   || [ ! -d "$CACHE_DIR/sadtalker/checkpoints" ] \
+# LEAN Tier-B image: only the LTX-Video weights are needed (no avatar Tier-A models).
+if [ ! -f "$CACHE_DIR/.ltx_ready" ] \
    || [ ! -d "$CACHE_DIR/ltx-video" ]; then
-    echo "[start] fetching model weights into $CACHE_DIR (first cold start) ..."
-    python /app/download_models.py || echo "[start] WARN: model fetch reported errors; handler will retry lazily"
-    touch "$CACHE_DIR/.weights_ready" || true
+    echo "[start] fetching LTX-Video weights into $CACHE_DIR (first cold start) ..."
+    python /app/download_models.py ltx || echo "[start] WARN: model fetch reported errors; handler will retry lazily"
+    touch "$CACHE_DIR/.ltx_ready" || true
 else
     echo "[start] weights present in $CACHE_DIR (warm cache)"
 fi
