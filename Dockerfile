@@ -100,6 +100,15 @@ RUN pip install --index-url https://download.pytorch.org/whl/cu128 --force-reins
 # source patches below is the combination that actually renders. (numpy<2 guidance is obsolete.)
 RUN pip install --force-reinstall --no-deps "numpy>=2.0,<2.3"
 
+# TIER B (generative / LTX-Video) FINAL re-pin — must come after the MuseTalk/SadTalker requirement
+# installs above. SadTalker's 2023 requirements.txt pins an OLD diffusers, which silently DOWNGRADES
+# our diffusers==0.32.2 below 0.31 and removes LTXPipeline -> the handler's `_get_ltx_t2v()` dies with
+# "ImportError: cannot import name 'LTXPipeline' from 'diffusers'". Re-pin the generative trio LAST.
+# --no-deps so the carefully-matched torch/numpy set above is left untouched (diffusers/transformers
+# would otherwise try to re-resolve numpy/torch and reintroduce the sm_120 / ABI failures).
+RUN pip install --no-deps --force-reinstall \
+        diffusers==0.32.2 transformers==4.46.3 accelerate==1.1.1
+
 # basicsr (via SadTalker/GFPGAN) imports torchvision.transforms.functional_tensor, which was
 # removed in torchvision 0.17+ -> ImportError on `from gfpgan import GFPGANer`. Rewrite the import
 # to the current location (rgb_to_grayscale lives in torchvision.transforms.functional now).
