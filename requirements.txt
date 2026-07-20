@@ -31,6 +31,7 @@ omegaconf==2.3.0
 huggingface_hub==0.24.6
 safetensors==0.4.4
 tqdm==4.66.5
+gdown==5.2.0   # MuseTalk face-parse 79999_iter.pth lives on Google Drive
 
 # --- Optional: R2 / S3 upload path for longer clips (handler.maybe_upload) ---
 boto3==1.34.162

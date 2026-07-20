@@ -32,27 +32,60 @@ def _ensure(path):
 
 def fetch_musetalk():
     """
-    MuseTalk weights live in the HF repo TMElyralab/MuseTalk (v1.5 layout: models/musetalkV15/...,
-    plus sd-vae, whisper, dwpose, face-parse-bisent, syncnet). We mirror the whole repo's `models`
-    tree into CACHE_DIR/musetalk so the inference script finds them via the paths handler.py passes.
+    Download EVERY weight MuseTalk v1.5 inference needs into CACHE_DIR/musetalk (which the Dockerfile
+    symlinks to MuseTalk/models). This mirrors MuseTalk's own download_weights.sh exactly — the main
+    UNet is NOT enough; inference also loads sd-vae, whisper, dwpose, syncnet and the face-parse
+    (bisenet) backbones, each from a different source:
 
-    NEEDS-GPU-VERIFY: confirm the exact repo subpaths against the MuseTalk commit pinned in the
-    Dockerfile. MuseTalk also documents a download_weights.sh — if the repo layout shifts, prefer
-    running that script instead of this function.
+      musetalkV15/{unet.pth, musetalk.json}              <- TMElyralab/MuseTalk
+      sd-vae/{config.json, diffusion_pytorch_model.bin}  <- stabilityai/sd-vae-ft-mse
+      whisper/{config.json, pytorch_model.bin, preprocessor_config.json} <- openai/whisper-tiny
+      dwpose/dw-ll_ucoco_384.pth                          <- yzd-v/DWPose
+      syncnet/latentsync_syncnet.pt                       <- ByteDance/LatentSync
+      face-parse-bisent/79999_iter.pth                    <- Google Drive (gdown)
+      face-parse-bisent/resnet18-5c106cde.pth             <- download.pytorch.org
+
+    hf_hub_download / urlretrieve skip files already present, so re-running is cheap (idempotent).
     """
-    from huggingface_hub import snapshot_download
+    from huggingface_hub import hf_hub_download
+    import urllib.request
 
-    dst = _ensure(os.path.join(CACHE_DIR, "musetalk"))
-    print(f"[models] MuseTalk -> {dst}", flush=True)
-    snapshot_download(
-        repo_id="TMElyralab/MuseTalk",
-        local_dir=dst,
-        allow_patterns=["*.pth", "*.json", "*.bin", "*.safetensors", "*.txt", "*.yaml"],
-        local_dir_use_symlinks=False,
-    )
-    # Auxiliary backbones MuseTalk depends on (downloaded into the same tree by its script).
-    # sd-vae-ft-mse (VAE) and whisper are pulled lazily by the inference code via HF_HOME on first
-    # run; nothing else to do here.
+    root = _ensure(os.path.join(CACHE_DIR, "musetalk"))
+    print(f"[models] MuseTalk (+ aux backbones) -> {root}", flush=True)
+
+    def hf(repo, filename, subdir=None):
+        target = _ensure(os.path.join(root, subdir)) if subdir else root
+        hf_hub_download(repo_id=repo, filename=filename, local_dir=target,
+                        local_dir_use_symlinks=False)
+
+    # Main UNet (v1.5): filenames carry the musetalkV15/ prefix, local_dir=root preserves it.
+    hf("TMElyralab/MuseTalk", "musetalkV15/musetalk.json")
+    hf("TMElyralab/MuseTalk", "musetalkV15/unet.pth")
+    # sd-vae-ft-mse
+    hf("stabilityai/sd-vae-ft-mse", "config.json", "sd-vae")
+    hf("stabilityai/sd-vae-ft-mse", "diffusion_pytorch_model.bin", "sd-vae")
+    # whisper-tiny (MuseTalk's audio feature extractor)
+    for f in ("config.json", "pytorch_model.bin", "preprocessor_config.json"):
+        hf("openai/whisper-tiny", f, "whisper")
+    # DWPose (face/pose detection)
+    hf("yzd-v/DWPose", "dw-ll_ucoco_384.pth", "dwpose")
+    # SyncNet (v1.5 lip-sync scoring)
+    hf("ByteDance/LatentSync", "latentsync_syncnet.pt", "syncnet")
+
+    # Face-parse (bisenet) — not on HF: resnet18 from pytorch.org, 79999_iter.pth from Google Drive.
+    fp = _ensure(os.path.join(root, "face-parse-bisent"))
+    resnet = os.path.join(fp, "resnet18-5c106cde.pth")
+    if not os.path.exists(resnet):
+        urllib.request.urlretrieve(
+            "https://download.pytorch.org/models/resnet18-5c106cde.pth", resnet)
+    bisenet = os.path.join(fp, "79999_iter.pth")
+    if not os.path.exists(bisenet):
+        try:
+            import gdown
+            gdown.download(id="154JgKpzCPW82qINcVieuPH3fZ2e0P812", output=bisenet, quiet=False)
+        except Exception as e:  # noqa: BLE001
+            print(f"[models] WARN: face-parse 79999_iter.pth fetch failed ({e}); "
+                  "face-parsing may be degraded", flush=True)
 
 
 def fetch_sadtalker():

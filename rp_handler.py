@@ -263,6 +263,10 @@ def lipsync_musetalk(reference, audio_wav, work_dir):
 
     # MuseTalk v1.5 inference entrypoint. Weights resolved from CACHE_DIR (see download_models.py),
     # which MuseTalk expects under ./models. We symlink that in the Dockerfile / at cold start.
+    # MuseTalk requires --ffmpeg_path (a DIRECTORY containing the ffmpeg binary), per its README.
+    import shutil
+    ffmpeg_bin = shutil.which("ffmpeg")
+    ffmpeg_dir = os.path.dirname(ffmpeg_bin) if ffmpeg_bin else "/usr/bin"
     cmd = [
         sys.executable, "-m", "scripts.inference",
         "--inference_config", cfg_path,
@@ -270,6 +274,7 @@ def lipsync_musetalk(reference, audio_wav, work_dir):
         "--unet_model_path", os.path.join(CACHE_DIR, "musetalk", "musetalkV15", "unet.pth"),
         "--unet_config", os.path.join(CACHE_DIR, "musetalk", "musetalkV15", "musetalk.json"),
         "--version", "v15",
+        "--ffmpeg_path", ffmpeg_dir,
     ]
     _run(cmd, cwd=MUSETALK_DIR)  # NEEDS-GPU-VERIFY
 
