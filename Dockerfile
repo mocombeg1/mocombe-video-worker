@@ -106,8 +106,12 @@ RUN pip install --force-reinstall --no-deps "numpy>=2.0,<2.3"
 # "ImportError: cannot import name 'LTXPipeline' from 'diffusers'". Re-pin the generative trio LAST.
 # --no-deps so the carefully-matched torch/numpy set above is left untouched (diffusers/transformers
 # would otherwise try to re-resolve numpy/torch and reintroduce the sm_120 / ABI failures).
+# tokenizers is pinned explicitly: transformers 4.46.3 requires tokenizers>=0.20,<0.21, but the
+# avatar repos / coqui-tts drag in tokenizers==0.15.2, and a --no-deps transformers reinstall won't
+# bump it -> "tokenizers>=0.20,<0.21 is required ... but found 0.15.2" when diffusers imports the
+# LTX pipeline (which loads transformers' T5 tokenizer). Pin the matching tokenizers here too.
 RUN pip install --no-deps --force-reinstall \
-        diffusers==0.32.2 transformers==4.46.3 accelerate==1.1.1
+        diffusers==0.32.2 transformers==4.46.3 tokenizers==0.20.3 accelerate==1.1.1
 
 # basicsr (via SadTalker/GFPGAN) imports torchvision.transforms.functional_tensor, which was
 # removed in torchvision 0.17+ -> ImportError on `from gfpgan import GFPGANer`. Rewrite the import
