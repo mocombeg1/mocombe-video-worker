@@ -461,6 +461,18 @@ def _ltx_num_frames(seconds):
     return 8 * k + 1
 
 
+def _ltx_dim(value, default):
+    """Coerce a caller-supplied width/height to a value LTX accepts (multiple of 32, sane range)."""
+    if value is None:
+        return default
+    try:
+        v = int(value)
+    except (TypeError, ValueError):
+        return default
+    v = max(256, min(1280, v))
+    return int(round(v / 32)) * 32
+
+
 def _generative(job, work_dir):
     """
     Text-to-video (t2v), or image-to-video (i2v) when image_url is given, via LTX-Video. Matches
@@ -479,12 +491,18 @@ def _generative(job, work_dir):
     seconds = max(1, min(LTX_MAX_SECONDS, seconds))
     num_frames = _ltx_num_frames(seconds)
 
+    # Optional per-job frame size. LTX requires both dims divisible by 32; anything else is
+    # silently corrupted output, so snap to the nearest multiple rather than trusting the caller.
+    # Defaults are unchanged, so existing callers (the CRM) keep the 704x480 behaviour.
+    width = _ltx_dim(job.get("width"), LTX_WIDTH)
+    height = _ltx_dim(job.get("height"), LTX_HEIGHT)
+
     image_url = job.get("image_url")
     gen_kwargs = dict(
         prompt=prompt,
         negative_prompt=LTX_NEGATIVE_PROMPT,
-        width=LTX_WIDTH,
-        height=LTX_HEIGHT,
+        width=width,
+        height=height,
         num_frames=num_frames,
         num_inference_steps=LTX_STEPS,
     )

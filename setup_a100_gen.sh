@@ -57,13 +57,16 @@ cat <<EOF
 Env:     $HOME/mocombe-video-gen/.venv
 Weights: $MODEL_CACHE_DIR/ltx-video
 
-Make ALL 24 Mocombe product clips right here on the A100:
+Make ALL 31 Mocombe mega-menu clips right here on the A100:
   cd ~/mocombe-video-gen && source .venv/bin/activate
   export MODEL_CACHE_DIR=$MODEL_CACHE_DIR HF_HOME=$HF_HOME
-  python generate_clips_local.py           # writes ./clips/<slug>.mp4
+  python generate_clips_local.py              # -> ./clips/<sect>/<slug>.mp4 (+ .jpg poster)
+  python generate_clips_local.py --only personal   # or one section at a time
+  python generate_clips_local.py --skip-existing   # resume if interrupted
 
-Then, from your LOCAL machine, copy them into the website:
-  scp -P 32144 -i <key> 'ubuntu@216.81.200.233:~/mocombe-video-gen/clips/*.mp4' \\
-      "C:/Users/Garoo/OneDrive/Desktop/MocombeFinancial.com_Website/Images/vid/"
+Then, from your LOCAL machine, copy the whole tree into the website. The layout already
+matches what site-addons.js loads (/Images/mega/<sect>/<slug>.mp4), so no renaming:
+  scp -P 32144 -i <key> -r 'ubuntu@216.81.200.233:~/mocombe-video-gen/clips/*' \\
+      "C:/Users/Garoo/OneDrive/Desktop/MocombeFinancial.com_Website/Images/mega/"
 ==================================================================
 EOF
