@@ -74,7 +74,7 @@ def main():
     args = ap.parse_args()
 
     prompts, render = load_spec()
-    width, height = render.get("width"), render.get("height")
+    width, height, steps = render.get("width"), render.get("height"), render.get("steps")
 
     slugs = args.slugs or list(prompts.keys())
     if args.only:
@@ -95,6 +95,8 @@ def main():
         job = {"type": "generative", "prompt": prompts[slug], "seconds": args.seconds}
         if width and height:
             job["width"], job["height"] = width, height
+        if steps:
+            job["steps"] = steps
 
         try:
             out = handler({"input": job})

@@ -85,7 +85,9 @@ LTX_STEPS = 30
 LTX_DEFAULT_SECONDS = 4
 LTX_MAX_SECONDS = 8
 LTX_NEGATIVE_PROMPT = (
-    "worst quality, inconsistent motion, blurry, jittery, distorted, watermark, text, low resolution"
+    "worst quality, inconsistent motion, blurry, jittery, distorted, watermark, text, low resolution, "
+    "deformed face, melted face, disfigured, extra head, two heads, extra limbs, mutated hands, "
+    "malformed features, warped anatomy, uncanny, morphing faces"
 )
 
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
@@ -497,6 +499,14 @@ def _generative(job, work_dir):
     width = _ltx_dim(job.get("width"), LTX_WIDTH)
     height = _ltx_dim(job.get("height"), LTX_HEIGHT)
 
+    # Optional per-job step count. More steps = more temporal coherence (fewer melted/duplicated
+    # subjects) at a linear time cost. Clamped to a sane range; defaults to LTX_STEPS for the CRM.
+    try:
+        steps = int(job.get("steps") or LTX_STEPS)
+    except (TypeError, ValueError):
+        steps = LTX_STEPS
+    steps = max(10, min(60, steps))
+
     image_url = job.get("image_url")
     gen_kwargs = dict(
         prompt=prompt,
@@ -504,7 +514,7 @@ def _generative(job, work_dir):
         width=width,
         height=height,
         num_frames=num_frames,
-        num_inference_steps=LTX_STEPS,
+        num_inference_steps=steps,
     )
     if image_url:
         from diffusers.utils import load_image
