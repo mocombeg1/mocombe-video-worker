@@ -475,6 +475,79 @@ def _ltx_dim(value, default):
     return int(round(v / 32)) * 32
 
 
+# --------------------------------------------------------------------------------------
+# RealVisXL keyframe seeding — makes generated video match the RealVisXL image look
+# --------------------------------------------------------------------------------------
+# LTX text-to-video invents its own aesthetic; image-to-video instead ANIMATES a supplied frame,
+# inheriting that frame's look. So for a generative clip with no seed image we render frame-0 on the
+# always-on RealVisXL image server (the same model behind the CRM avatars/creatives) and run i2v
+# from it — the whole clip then carries the RealVisXL photoreal style. If the server is unreachable
+# or seeding is disabled (VIDEO_KEYFRAME=off), we degrade cleanly to pure t2v.
+REALVIS_URL = os.environ.get("REALVIS_URL", "http://127.0.0.1:8500")
+# Photoreal negative for the keyframe. Deliberately does NOT exclude groups (a scene may want a
+# family/team), unlike the image server's solo-avatar default — so we pass our own.
+KEYFRAME_NEG = (
+    "3d render, cgi, cartoon, anime, illustration, painting, drawing, plastic skin, waxy, airbrushed, "
+    "deformed, disfigured, bad anatomy, extra fingers, mutated hands, extra limbs, blurry, low quality, "
+    "jpeg artifacts, watermark, text, words, letters, logo, signature"
+)
+
+
+def _realvis_token():
+    """Shared secret for the image server: env first, else the token file the server itself uses."""
+    tok = os.environ.get("REALVIS_TOKEN", "")
+    if tok:
+        return tok
+    for p in ("/home/ubuntu/realvis_token.env", os.path.expanduser("~/realvis_token.env")):
+        try:
+            with open(p) as fh:
+                for line in fh:
+                    if line.startswith("REALVIS_TOKEN="):
+                        return line.split("=", 1)[1].strip()
+        except OSError:
+            pass
+    return ""
+
+
+def _sdxl_keyframe_size(width, height):
+    """Nearest SDXL/RealVisXL aspect bucket for the target LTX frame; LTX resizes to width/height."""
+    if width == height:
+        return (1024, 1024)
+    if width > height:
+        return (1216, 832) if width / height >= 1.4 else (1152, 896)
+    return (832, 1216) if height / width >= 1.4 else (896, 1152)
+
+
+def _realvis_keyframe(prompt, width, height, work_dir):
+    """Render a photoreal keyframe on the local RealVisXL server. Returns a file path, or None when
+    seeding is disabled or the server is unreachable (caller then falls back to pure t2v)."""
+    if os.environ.get("VIDEO_KEYFRAME", "realvisxl").lower() in ("", "off", "none", "0", "false"):
+        return None
+    kw, kh = _sdxl_keyframe_size(width, height)
+    headers = {"Content-Type": "application/json"}
+    token = _realvis_token()
+    if token:
+        headers["X-Auth"] = token
+    try:
+        resp = requests.post(
+            REALVIS_URL.rstrip("/") + "/generate",
+            json={"prompt": prompt, "negative_prompt": KEYFRAME_NEG,
+                  "width": kw, "height": kh, "steps": 30, "guidance": 5.0},
+            headers=headers, timeout=180,
+        )
+        resp.raise_for_status()
+        if not resp.content:
+            return None
+        kf = os.path.join(work_dir, "keyframe.png")
+        with open(kf, "wb") as fh:
+            fh.write(resp.content)
+        _log(f"RealVisXL keyframe {kw}x{kh} -> {kf} ({len(resp.content) // 1024} KB)")
+        return kf
+    except Exception as e:  # noqa: BLE001 — any failure just means fall back to t2v
+        _log(f"RealVisXL keyframe unavailable ({e}); falling back to pure t2v")
+        return None
+
+
 def _generative(job, work_dir):
     """
     Text-to-video (t2v), or image-to-video (i2v) when image_url is given, via LTX-Video. Matches
@@ -516,23 +589,37 @@ def _generative(job, work_dir):
         num_frames=num_frames,
         num_inference_steps=steps,
     )
+
+    # Seed image priority: an explicit image_url wins; otherwise render a RealVisXL keyframe so the
+    # clip matches the RealVisXL look. If neither is available, fall back to pure text-to-video.
+    seed_image = None
+    seeded_by = None
     if image_url:
+        seed_image = os.path.join(work_dir, "seed" + _ext_from_url(image_url, ".png"))
+        _download(image_url, seed_image)
+        seeded_by = "caller-image"
+    else:
+        seed_image = _realvis_keyframe(prompt, width, height, work_dir)
+        if seed_image:
+            seeded_by = "realvisxl-keyframe"
+
+    if seed_image:
         from diffusers.utils import load_image
 
-        ref_path = os.path.join(work_dir, "seed" + _ext_from_url(image_url, ".png"))
-        _download(image_url, ref_path)
         pipe = _get_ltx_i2v()
-        result = pipe(image=load_image(ref_path), **gen_kwargs)
+        result = pipe(image=load_image(seed_image), **gen_kwargs)
+        model_used = f"{seeded_by}+ltx-i2v"
     else:
         pipe = _get_ltx_t2v()
         result = pipe(**gen_kwargs)
+        model_used = "ltx-video"
 
     frames = result.frames[0]
     out_mp4 = os.path.join(work_dir, "generative_out.mp4")
     export_to_video(frames, out_mp4, fps=LTX_FPS)
 
     duration = _ffprobe_duration(out_mp4) or seconds
-    result_out = {"mime": "video/mp4", "model_used": "ltx-video", "duration_seconds": round(duration, 2)}
+    result_out = {"mime": "video/mp4", "model_used": model_used, "duration_seconds": round(duration, 2)}
 
     want_url = bool(job.get("result_bucket") or os.environ.get("VIDEO_S3_BUCKET"))
     url = maybe_upload(out_mp4) if want_url else None
