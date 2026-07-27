@@ -35,8 +35,12 @@ $VENV/bin/huggingface-cli download KwaiVGI/LivePortrait --local-dir pretrained_w
   --exclude "*.git*" "README.md" "docs"
 [ -f pretrained_weights/liveportrait/base_models/warping_module.pth ] && echo "LP WEIGHTS OK" || { echo "LP weights MISSING"; exit 1; }
 
-echo "== LivePortrait ready. Animate a portrait to life: =="
-echo "  # driving: use a CONTINUOUS ~13-15s clip (blinks + calm head motion). assets/examples/driving/d10.mp4"
-echo "  # is ~15s and works well. d0.mp4 is only 3s -> loops repetitively, avoid. Then:"
-echo "  $PY inference.py -s ~/PORTRAIT.png -d assets/examples/driving/d10.mp4 -o ~/lp_out --flag-crop-driving-video"
+echo "== LivePortrait ready. Animate a portrait to life (CALM settings): =="
+echo "  # driving: CONTINUOUS ~15s clip d10.mp4 (blinks + calm head motion; d0 is 3s -> loops, avoid)."
+echo "  # CRITICAL: --driving-multiplier 0.6 — at the default 1.0 the eyes DART side-to-side (gaze"
+echo "  #   transfer too strong; Garood rejected 1.0). 0.6 keeps blinks + gentle head motion, no darting."
+echo "  #   (drop toward 0.5 if a given driving still darts; --animation-region {exp,pose,lip,eyes,all} exists"
+echo "  #    if you need finer control, but multiplier 0.6 was the fix.)"
+echo "  $PY inference.py -s ~/PORTRAIT.png -d assets/examples/driving/d10.mp4 -o ~/lp_out \\"
+echo "     --driving-multiplier 0.6 --flag-stitching --flag-crop-driving-video"
 echo "  # -> ~/lp_out/PORTRAIT--d10.mp4 (living face). Feed THAT as MuseTalk video_path (see musetalk bootstrap)."
