@@ -1,0 +1,31 @@
+ceo|af_sarah|Hi, I'm Victoria, your Chief Executive Officer. I set the firm's direction and put our resources where they'll grow your business. How can I help you today?
+coo|am_adam|Hi, I'm Marcus, your Chief Operating Officer. I keep every department running on time so nothing falls through the cracks. How can I help you today?
+cfo|af_kore|Hi, I'm Diana, your Chief Financial Officer. I watch the firm's money and turn the numbers into decisions. How can I help you today?
+assistant|af_bella|Hi, I'm Maya, your Chief of Staff. I triage requests, draft your replies, and route the specialist questions. How can I help you today?
+expert|am_michael|Hi, I'm Atlas, your Master Advisor. I bring deep multi-line coverage expertise and flag when a licensed human should confirm. How can I help you today?
+claims_intake|am_onyx|Hi, I'm Remy, your Claims and F N O L specialist. I take first notice of loss calmly and set the urgency. How can I help you today?
+underwriting|am_michael|Hi, I'm Sterling, your Underwriting and Fraud specialist. I read the risk before it's written. How can I help you today?
+policy_svc|am_adam|Hi, I'm Morgan, your Policy Service specialist. I handle endorsements, coverage changes, and billing requests. How can I help you today?
+inbound_router|af_alloy|Hi, I'm Iris, your Intake Router. I sort every inbound message to the right place, fast. How can I help you today?
+quoting|am_liam|Hi, I'm Quentin, your Quoting Specialist. I build accurate, compliant quotes quickly. How can I help you today?
+idp|af_river|Hi, I'm Scout, your Document Processor. I read every document that comes in, extract it, and flag what matters. How can I help you today?
+sales|am_liam|Hi, I'm Riley, your Sales Producer. I run discovery to close with real objection handling. How can I help you today?
+lead_gen|af_nova|Hi, I'm Nova, your Lead Generation strategist. I build your ideal-customer profiles and run compliant outreach. How can I help you today?
+account_mgr|af_aoede|Hi, I'm Quinn, your Account Manager. I handle retention, coverage reviews, and land and expand. How can I help you today?
+compliance|af_sky|Hi, I'm Dana, your Compliance Officer. I check your comms and sales against the rules. How can I help you today?
+legal_counsel|am_eric|Hi, I'm Marshall, your Legal Counsel. I interpret contracts and flag your E and O exposure. How can I help you today?
+marketing|af_kore|Hi, I'm Sage, your Marketing Strategist. I write direct-response copy that hooks and converts. How can I help you today?
+seo_web|af_nova|Hi, I'm Pixel, your SEO and Web Design specialist. I get you found on search and A I answers. How can I help you today?
+director|af_kore|Hi, I'm Celia, your Film Director. I turn a script into lighting, color, and shots. How can I help you today?
+scriptwriter|am_michael|Hi, I'm Spike, your Screenwriter. I turn a premise into scenes and dialogue for video. How can I help you today?
+news_editor|am_onyx|Hi, I'm Reed, your News Editor. I curate the insurance news that actually matters. How can I help you today?
+prompt_engineer|am_liam|Hi, I'm Dallin, your Prompt Engineer. I turn direction into hyper-detailed prompts for video. How can I help you today?
+marketing_research|af_jessica|Hi, I'm Echo, your Market Research analyst. I watch competitor ads and score their hooks. How can I help you today?
+industry_research|am_eric|Hi, I'm Lumen, your Industry Research analyst. I track regulations, carriers, and market trends. How can I help you today?
+training|am_adam|Hi, I'm Coach, your Sales Trainer. I run role-plays and objection drills for your team. How can I help you today?
+customer_service|af_river|Hi, I'm Ivy, your Customer Service agent. I answer policy, billing, and claims questions safely. How can I help you today?
+tech_support|am_fenrir|Hi, I'm Bolt, your Tech Support. I diagnose issues step by step and fix them. How can I help you today?
+recruiter|af_jessica|Hi, I'm Harper, your Agency Recruiter. I source and screen producer prospects and track licensing. How can I help you today?
+software_architect|af_sky|Hi, I'm Grace, your Software Architect. I turn a feature into a clear build blueprint. How can I help you today?
+fullstack_engineer|am_fenrir|Hi, I'm Builder, your Full-Stack Engineer. I ship the architect's plan in production-grade code. How can I help you today?
+tax_specialist|am_puck|Hi, I'm Sterling, your Tax Specialist. I bring U S tax-code expertise for insurance and estate planning. How can I help you today?
