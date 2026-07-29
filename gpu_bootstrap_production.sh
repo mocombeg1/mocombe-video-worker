@@ -129,7 +129,7 @@ if [ ! -x "$HOME/imgvenv/bin/python" ]; then
   "$HOME/imgvenv/bin/pip" install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu124 \
     || "$HOME/imgvenv/bin/pip" install torch torchvision
   "$HOME/imgvenv/bin/pip" install "diffusers==0.39.0" "transformers==4.46.3" accelerate safetensors \
-    "huggingface_hub==0.26.2" fastapi "uvicorn[standard]" pillow
+    "huggingface_hub==0.34.0" fastapi "uvicorn[standard]" pillow
 fi
 [ -f "$HOME/realvis_token.env" ] || { echo "REALVIS_TOKEN=$(openssl rand -hex 24)" > "$HOME/realvis_token.env"; chmod 600 "$HOME/realvis_token.env"; }
 
@@ -212,7 +212,7 @@ if [ ! -x "$VIDEO_DIR/.venv/bin/python" ]; then
       --index-url https://download.pytorch.org/whl/cu128 || ./.venv/bin/pip install torch torchvision torchaudio
   ./.venv/bin/pip install runpod==1.7.0 requests==2.32.3 diffusers==0.32.2 transformers==4.46.3 \
       accelerate==1.1.1 sentencepiece==0.2.0 protobuf==5.28.3 safetensors==0.4.4 \
-      "huggingface_hub==0.26.2" imageio==2.36.0 imageio-ffmpeg==0.5.1 opencv-python-headless==4.10.0.84 \
+      "huggingface_hub==0.34.0" imageio==2.36.0 imageio-ffmpeg==0.5.1 opencv-python-headless==4.10.0.84 \
       fastapi "uvicorn[standard]"
   ./.venv/bin/pip install torch==2.11.0 torchvision==0.26.0 torchaudio==2.11.0 \
       --index-url https://download.pytorch.org/whl/cu128 --force-reinstall || true
