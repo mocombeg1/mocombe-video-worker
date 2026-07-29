@@ -128,7 +128,7 @@ if [ ! -x "$HOME/imgvenv/bin/python" ]; then
   # torch 2.5.1+cu124 + diffusers 0.39.0 = the proven RealVisXL_V5.0 stack (per HANDOFF_3D_Office.md).
   "$HOME/imgvenv/bin/pip" install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu124 \
     || "$HOME/imgvenv/bin/pip" install torch torchvision
-  "$HOME/imgvenv/bin/pip" install "diffusers==0.39.0" "transformers==4.46.3" accelerate safetensors \
+  "$HOME/imgvenv/bin/pip" install "diffusers==0.39.0" "transformers==4.49.0" accelerate safetensors \
     "huggingface_hub==0.34.0" fastapi "uvicorn[standard]" pillow
 fi
 [ -f "$HOME/realvis_token.env" ] || { echo "REALVIS_TOKEN=$(openssl rand -hex 24)" > "$HOME/realvis_token.env"; chmod 600 "$HOME/realvis_token.env"; }
@@ -156,7 +156,7 @@ def _load():
         vae = AutoencoderKL.from_pretrained(VAE, torch_dtype=torch.float16)
         _pipe = StableDiffusionXLPipeline.from_pretrained(MODEL, vae=vae, torch_dtype=torch.float16,
                                                           use_safetensors=True, variant="fp16")
-        _pipe = _pipe.to("cuda")
+        _pipe = _pipe.to("cuda", torch.float16)
     return _pipe
 
 app = FastAPI(title="RealVisXL image server")
