@@ -32,7 +32,7 @@ set -euo pipefail
 # ---- Tunables (override via env) --------------------------------------------
 VLLM_MODEL="${VLLM_MODEL:-Qwen/Qwen2.5-32B-Instruct-AWQ}"
 VLLM_NAME="${VLLM_NAME:-qwen2.5-32b}"     # MUST match the CRM's LLM_MODEL (hyphen, not colon!)
-VLLM_UTIL="${VLLM_UTIL:-0.70}"            # 0.70 keeps positive KV headroom alongside image+video
+VLLM_UTIL="${VLLM_UTIL:-0.50}"            # 0.70 keeps positive KV headroom alongside image+video
 VLLM_MAXLEN="${VLLM_MAXLEN:-8192}"
 VLLM_PORT="${VLLM_PORT:-8000}"
 REALVIS_PORT="${REALVIS_PORT:-8500}"
