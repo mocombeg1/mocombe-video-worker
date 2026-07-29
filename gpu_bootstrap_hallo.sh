@@ -27,6 +27,8 @@ $PIP install -q -e .   # hallo's own deps
 # Pin the versions proven on the box (avoids the diffusers/transformers drift that breaks Hallo)
 $PIP install -q diffusers==0.27.2 transformers==4.39.2 accelerate==0.28.0 insightface==0.7.3 \
                 mediapipe==0.10.14 audio-separator==0.17.2 omegaconf einops
+# insightface needs onnxruntime at import (face crop). CPU build is plenty — runs once per image.
+$PIP install -q onnxruntime==1.17.3
 # CRITICAL: huggingface_hub 0.23.4 — hub 1.x removed `huggingface-cli download` and silently
 # prints CLI help instead of downloading (empty weights). Same trap that bit MuseTalk/LivePortrait.
 $PIP install -q "huggingface_hub==0.23.4"
