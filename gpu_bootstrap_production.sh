@@ -98,13 +98,38 @@ VIDEO_DIR="$HOME/mocombe-video-gen"
 # 3) vLLM BRAIN (:8000) — venv, weights, launch flags (from gpu-node/thunder-vllm-setup.sh)
 # =============================================================================
 log "[3/8] vLLM brain venv + install"
+# ⚠️ BOTH PINS BELOW ARE LOAD-BEARING. This line used to read `pip install vllm huggingface_hub`,
+# unpinned, and on 2026-08-05 that took production down for ~4 hours — silently, because the CRM
+# failed over to the PAID DeepInfra fallback and everything kept working while billing per token.
+#
+#   1. vllm==0.11.0 pins torch 2.8.0, whose default PyPI wheel is cu128. Unpinned, pip installed a
+#      vLLM whose torch was built for CUDA 13, against a pod driver of 570.133.20 = CUDA 12.8:
+#        RuntimeError: The NVIDIA driver on your system is too old (found version 12080)
+#      The daemon then crash-looped every 5s forever. No restart can fix this.
+#   2. transformers<5 — transformers 5.x removed `all_special_tokens_extended`, which vLLM 0.11
+#      still calls, so a fresh install crashes with:
+#        AttributeError: Qwen2Tokenizer has no attribute all_special_tokens_extended
+#
+# Before bumping either pin, check the pod's driver with `nvidia-smi --query-gpu=driver_version`
+# and confirm the torch build matches it. Driver 570.x = CUDA 12.8 = cu128 wheels.
+VLLM_PIN="${VLLM_PIN:-vllm==0.11.0}"
 if [ ! -x "$HOME/vllm-env/bin/vllm" ]; then
   python3.10 -m venv "$HOME/vllm-env"
   "$HOME/vllm-env/bin/pip" install --upgrade pip setuptools wheel >/dev/null
-  "$HOME/vllm-env/bin/pip" install vllm huggingface_hub
+  "$HOME/vllm-env/bin/pip" install "$VLLM_PIN" "transformers<5" huggingface_hub
 else
   log "vLLM venv present — skipping install"
 fi
+# Fail loudly HERE rather than letting the daemon crash-loop invisibly later: a CUDA mismatch is
+# the one failure that looks like "the CRM is fine" from every angle except the bill.
+if ! "$HOME/vllm-env/bin/python" -c "import torch; torch.cuda.init()" 2>/dev/null; then
+  echo "!!  torch cannot initialise CUDA in \$HOME/vllm-env — driver/torch mismatch."
+  echo "!!  driver: $(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null)"
+  echo "!!  torch : $("$HOME/vllm-env/bin/python" -c 'import torch;print(torch.__version__, torch.version.cuda)' 2>&1)"
+  echo "!!  Rebuild the venv against a matching wheel (driver 570.x -> cu128) before continuing."
+  exit 1
+fi
+log "vLLM venv CUDA check passed: $("$HOME/vllm-env/bin/python" -c 'import torch;print(torch.__version__)')"
 # Persisted API key (same value the CRM orchestrator sends as LLM_API_KEY).
 [ -f "$HOME/vllm_token.env" ] || { echo "VLLM_KEY=$(openssl rand -hex 24)" > "$HOME/vllm_token.env"; chmod 600 "$HOME/vllm_token.env"; }
 # Prefetch the AWQ weights so first boot doesn't stall the health check (~19GB).
@@ -320,11 +345,29 @@ TimeoutStartSec=0
 WantedBy=multi-user.target
 EOF
 }
-mk_unit gpu-vllm    vllm_daemon.sh    "Mocombe vLLM brain (qwen2.5-32b)"
-mk_unit gpu-realvis realvis_daemon.sh "Mocombe RealVisXL image server"
-mk_unit gpu-video   video_daemon.sh   "Mocombe LTX/render server (server.py)"
-sudo systemctl daemon-reload
-sudo systemctl enable --now gpu-vllm gpu-realvis gpu-video
+# A RunPod pod is a CONTAINER and has no systemd — `systemctl daemon-reload` there fails with
+# "Failed to connect to bus" and this stage used to HANG FOREVER, after stages 1-6 had already
+# completed successfully. Detect it and take the setsid path instead of stalling the whole install.
+if [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then
+  mk_unit gpu-vllm    vllm_daemon.sh    "Mocombe vLLM brain (qwen2.5-32b)"
+  mk_unit gpu-realvis realvis_daemon.sh "Mocombe RealVisXL image server"
+  mk_unit gpu-video   video_daemon.sh   "Mocombe LTX/render server (server.py)"
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now gpu-vllm gpu-realvis gpu-video
+  log "systemd units installed — servers start on boot"
+else
+  log "NO SYSTEMD (RunPod pod / container) — starting via setsid instead"
+  bash "$HOME/start_gpu_servers.sh"
+  echo
+  echo "  ⚠️  NO BOOT PERSISTENCE ON THIS HOST."
+  echo "      These servers will NOT come back after a pod stop/start. Either:"
+  echo "        (a) set the pod's Container Start Command to:  bash /root/start_gpu_servers.sh"
+  echo "            — do this in the RunPod console; it is the only durable fix, or"
+  echo "        (b) re-run ~/start_gpu_servers.sh by hand after every pod start."
+  echo "      If you skip this, the CRM silently fails over to the PAID DeepInfra fallback and"
+  echo "      keeps working while billing per token — exactly what cost ~4h on 2026-08-05."
+  echo
+fi
 
 # =============================================================================
 # 8) HEALTH — give models time to load, then probe each port.
