@@ -69,6 +69,9 @@ class RenderRequest(BaseModel):
     width: int | None = None
     height: int | None = None
     format: str = "mp4"
+    # motion (pose-guided full-body animation — MimicMotion). Animates the reference portrait with a
+    # library motion (walk/point/wave/idle/gesture) WITHOUT morphing the body, unlike generative/LTX.
+    motion: str | None = None
 
 
 def _auth(authorization: str | None):
@@ -103,7 +106,11 @@ def _worker():
                 continue
             import base64
 
-            name = f"{job_id}.mp4"
+            # Honor the render's own container: motion returns a transparent-alpha webm (so the clip
+            # drops onto any background — the 3D office / tour presenter); avatar/generative are mp4.
+            mime = (out or {}).get("mime", "video/mp4")
+            ext = "webm" if "webm" in mime else "mp4"
+            name = f"{job_id}.{ext}"
             with open(os.path.join(MEDIA_DIR, name), "wb") as f:
                 f.write(base64.b64decode(b64))
             _set(job_id, status="succeeded", video_url=f"{PUBLIC_BASE_URL}/media/{name}")
@@ -139,6 +146,9 @@ def start_render(req: RenderRequest, authorization: str | None = Header(default=
             v = getattr(req, k)
             if v is not None:
                 payload[k] = v
+    elif req.reference_url and req.motion:
+        job_type = "motion"
+        payload = {"type": "motion", "reference_url": req.reference_url, "motion": req.motion}
     elif req.reference_url and req.script:
         job_type = "avatar"
         payload = {
@@ -150,7 +160,7 @@ def start_render(req: RenderRequest, authorization: str | None = Header(default=
         if req.voice_sample_url:
             payload["voice_sample_url"] = req.voice_sample_url
     else:
-        raise HTTPException(400, "send either {prompt} for generative, or {reference_url, script} for a talking avatar")
+        raise HTTPException(400, "send {prompt} for generative, {reference_url, script} for a talking avatar, or {reference_url, motion} for pose-guided full-body motion")
 
     # Reject early if this instance's venv can't serve the type — a clear 400 beats an
     # ImportError five minutes into a model load.
@@ -179,4 +189,5 @@ def media(name: str):
     path = os.path.join(MEDIA_DIR, os.path.basename(name))
     if not os.path.isfile(path):
         raise HTTPException(404, "not found")
-    return FileResponse(path, media_type="video/mp4")
+    mt = "video/webm" if name.lower().endswith(".webm") else "video/mp4"
+    return FileResponse(path, media_type=mt)

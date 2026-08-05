@@ -666,6 +666,51 @@ def _diag():
     return info
 
 
+# ── Motion (pose-guided full-body animation — MimicMotion) ──────────────────────────────────
+# Animates a reference portrait with a LIBRARY motion (walk/point/wave/idle/gesture) WITHOUT
+# morphing the body — the exact failure mode of the generative/LTX path on full-body motion. It
+# copies the pose from a driving clip onto the portrait, then removes the background so the
+# returned transparent-alpha webm drops onto any scene (the 3D office doorway / tour presenter).
+# Runs in its OWN venv (RENDER_MODE=motion) — MimicMotion's deps conflict with LTX + MuseTalk.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+POSE_LIB = os.environ.get("MOTION_POSE_DIR", os.path.join(_HERE, "pose_library"))
+MOTION_RENDER_SH = os.environ.get("MOTION_RENDER_SH", os.path.join(_HERE, "render_motion.sh"))
+MOTIONS = {"walk", "point", "wave", "idle", "gesture"}
+
+
+def _motion(job, work_dir):
+    """reference_url (full-body portrait) + motion (library name) -> transparent-alpha webm of the
+    portrait performing that motion, via MimicMotion (pose-guided, no body morphing)."""
+    ref_url = str(job.get("reference_url") or "").strip()
+    motion = str(job.get("motion") or "").strip().lower()
+    if not ref_url:
+        return {"error": "reference_url is required (a full-body portrait image)."}
+    if motion not in MOTIONS:
+        return {"error": f"motion must be one of {sorted(MOTIONS)}; got {motion!r}"}
+    pose = os.path.join(POSE_LIB, f"{motion}.mp4")
+    if not os.path.isfile(pose):
+        return {"error": f"no driving-pose clip for '{motion}' in the pose library ({POSE_LIB})"}
+
+    ref_path = os.path.join(work_dir, "ref.png")
+    r = requests.get(ref_url, timeout=60)
+    r.raise_for_status()
+    with open(ref_path, "wb") as f:
+        f.write(r.content)
+
+    out_webm = os.path.join(work_dir, "motion.webm")
+    proc = subprocess.run(
+        ["bash", MOTION_RENDER_SH, ref_path, pose, out_webm],
+        capture_output=True, text=True, timeout=1800,
+    )
+    if proc.returncode != 0 or not os.path.isfile(out_webm) or os.path.getsize(out_webm) == 0:
+        tail = (proc.stderr or proc.stdout or "")[-900:]
+        return {"error": f"motion render failed: {tail}"}
+
+    with open(out_webm, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode("ascii")
+    return {"video_base64": b64, "mime": "video/webm", "duration_seconds": _ffprobe_duration(out_webm)}
+
+
 def handler(event):
     """RunPod serverless entrypoint. Never raises — always returns a dict (output or {error})."""
     try:
@@ -678,6 +723,10 @@ def handler(event):
         if job_type == "generative":
             with tempfile.TemporaryDirectory(prefix="job_") as work_dir:
                 return _generative(job, work_dir)
+
+        if job_type == "motion":
+            with tempfile.TemporaryDirectory(prefix="job_") as work_dir:
+                return _motion(job, work_dir)
 
         if job_type != "talking_avatar":
             return {"error": f"Unknown render job type: {job_type!r}"}
