@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+
+# ── LICENCE HOLD (2026-08-11) ─────────────────────────────────────────────────────────────
+# Non-commercial models were found inside this pipeline. New renders are blocked until
+# outside counsel answers. See hallo_licence_hold.sh for the finding and how to lift it.
+source "$(dirname "$0")/hallo_licence_hold.sh"
 # Map rendered greeting clips into the URL layout the 3D office expects:
 #   rendered  : <SRC>/greet_<id>_<variant>_hallo.mp4   (variant matrix, from batch_hallo_558*)
 #   rendered  : <PREVIEW>/greet_<id>_hallo.mp4         (31 default clips)
@@ -19,8 +24,9 @@ n=0
 for f in "$SRC"/greet_*_hallo.mp4; do
   [ -s "$f" ] || continue
   b=$(basename "$f"); rest=${b#greet_}; rest=${rest%_hallo.mp4}   # <id>_<variant>
-  # split at the LAST two underscore groups: variant = <eth>_<n>; id = the rest
-  variant=$(echo "$rest" | grep -oE '[a-z]+(_[a-z]+)*_[0-9]+$')
+  # variant is one of the KNOWN ethnicity slugs + _N (matching against the set avoids the greedy
+  # split that would swallow the id, e.g. ceo_white_2 -> id=ceo, variant=white_2).
+  variant=$(echo "$rest" | grep -oE '(black|white|hispanic|east_asian|south_asian|middle_eastern)_[0-9]+$')
   id=${rest%_$variant}
   [ -n "$variant" ] && [ -n "$id" ] || { echo "skip (unparsed): $b"; continue; }
   mkdir -p "$DEST/$id"; cp "$f" "$DEST/$id/greet_${variant}.mp4"; n=$((n+1))

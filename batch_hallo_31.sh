@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+
+# ── LICENCE HOLD (2026-08-11) ─────────────────────────────────────────────────────────────
+# Non-commercial models were found inside this pipeline. New renders are blocked until
+# outside counsel answers. See hallo_licence_hold.sh for the finding and how to lift it.
+source "$(dirname "$0")/hallo_licence_hold.sh"
 # Resumable, self-healing 31-agent Hallo greeting batch. manifest.txt line = id|voice|greeting.
 # Runs UNATTENDED on the A100 (setsid). Handles Thunder's contended-GPU stalls: kills any wedged
 # render before each attempt + a hard 15-min cap + one retry, and CONTINUES past any single failure.

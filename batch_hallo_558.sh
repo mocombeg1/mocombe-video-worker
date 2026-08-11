@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+
+# ── LICENCE HOLD (2026-08-11) ─────────────────────────────────────────────────────────────
+# Non-commercial models were found inside this pipeline. New renders are blocked until
+# outside counsel answers. See hallo_licence_hold.sh for the finding and how to lift it.
+source "$(dirname "$0")/hallo_licence_hold.sh"
 # Resumable 558-clip avatar-VARIANT greeting batch (31 agents x 18 photoreal variants).
 # One voice+greeting per agent (agents.tsv: id<TAB>voice<TAB>greeting), reused across that
 # agent's 18 portraits. Balanced SLOT-MAJOR order: renders variant-slot k for ALL agents before

@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+
+# ── LICENCE HOLD (2026-08-11) ─────────────────────────────────────────────────────────────
+# Non-commercial models were found inside this pipeline. New renders are blocked until
+# outside counsel answers. See hallo_licence_hold.sh for the finding and how to lift it.
+source "$(dirname "$0")/hallo_licence_hold.sh"
 # One-command HALLO bootstrap (Fudan diffusion talking-head) — the APPROVED avatar-greeting engine
 # (Garood signed off 2026-07-28: "her face is finally moving naturally, this is the one").
 # Hallo generates the WHOLE face in motion (natural blinks/brows/head) from ONE photo + audio —
