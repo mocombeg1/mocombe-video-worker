@@ -52,6 +52,14 @@ fi
 # expected tree: audio_separator config.json face_analysis hallo motion_module sd-vae-ft-mse stable-diffusion-v1-5 wav2vec
 [ -d pretrained_models/hallo ] && [ -d pretrained_models/motion_module ] && echo "HALLO WEIGHTS OK ($(du -sh pretrained_models | cut -f1))" || { echo "WEIGHTS INCOMPLETE"; exit 1; }
 
+# ── LICENCE: drop the audio separator ────────────────────────────────────────────────────────
+# Kim_Vocal_2.onnx ships in the bundle above with NO stated licence, and we do not need it: the
+# driving audio is Kokoro TTS, one clean synthetic voice with nothing to separate. This patches
+# inference.py to pass None (upstream's own "use audio directly" branch) and deletes the weight.
+# It runs BEFORE the AX42 staging below so the cached tarball never carries the file either.
+# Pairs with `-ar 16000` in the batch scripts — see the patch's docstring for why that is required.
+$PY "$(dirname "$0")/patch_drop_audio_separator.py" "$HALLO" || { echo "SEPARATOR PATCH FAILED"; exit 1; }
+
 # stage weights to AX42 for next time (best-effort)
 if [ "${AX42:-}" ]; then
   ( tar czf /tmp/hallo.tgz -C pretrained_models . && ssh -o ConnectTimeout=8 "$AX42" "mkdir -p /root/gpu-assets" && \

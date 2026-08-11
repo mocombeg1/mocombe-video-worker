@@ -29,7 +29,9 @@ while IFS='|' read -r id voice greeting <&3; do
   if [ ! -s "$WAV" ]; then
     RAW=/home/ubuntu/${id}_raw.wav
     printf '%s' "$greeting" | "$KPY" /home/ubuntu/gen_voice.py "$voice" "$RAW" >>"$LOG" 2>&1
-    [ -s "$RAW" ] && ffmpeg -nostdin -y -loglevel error -i "$RAW" -filter:a atempo=1.08 "$WAV" 2>>"$LOG"
+    # 16k mono is REQUIRED: the vocal separator we dropped for licence reasons is what used to
+    # resample the driving audio for wav2vec. Do not remove -ar 16000 while inference.py is patched.
+    [ -s "$RAW" ] && ffmpeg -nostdin -y -loglevel error -i "$RAW" -filter:a atempo=1.08 -ar 16000 -ac 1 "$WAV" 2>>"$LOG"
   fi
   if [ ! -s "$WAV" ] || [ ! -s "$PNG" ]; then echo "FAIL $id (no voice/png)" >> "$LOG"; continue; fi
   for attempt in 1 2; do

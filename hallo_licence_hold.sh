@@ -9,8 +9,15 @@
 #   1. pretrained_models/face_analysis/models/*.onnx are INSIGHTFACE models. InsightFace grants MIT
 #      for its CODE and states separately that "the training data containing the annotation (and the
 #      models trained with these data) are available for non-commercial research purposes only."
-#      They run on every render — the face crop of the source portrait.
-#   2. pretrained_models/audio_separator/Kim_Vocal_2.onnx has NO STATED LICENCE at all.
+#      They run on every render — the face crop of the source portrait.  ** STILL OPEN **
+#   2. pretrained_models/audio_separator/Kim_Vocal_2.onnx had NO STATED LICENCE at all.
+#      ** RESOLVED 2026-08-11 — the separator is gone.** patch_drop_audio_separator.py makes
+#      inference.py pass None (upstream's own "use audio directly" branch) and deletes the weight;
+#      the batch scripts now emit the driving WAV at 16 kHz mono, because the resample wav2vec needs
+#      lived inside the separator branch. Nothing was substituted: our driving audio is Kokoro TTS,
+#      one clean synthetic voice with nothing to separate.
+#
+# So finding 2 is closed and finding 1 is why this hold still exists.
 #
 # Provara Advantage is a paid product, so this is the same shape as the Creole voice finding:
 # a non-commercial model inside something we sell. Whether that reaches the greeting clips ALREADY
@@ -42,12 +49,14 @@ else
   │  HALLO GREETING RENDERS ARE ON HOLD — LICENCE REVIEW                         │
   └──────────────────────────────────────────────────────────────────────────────┘
 
-  This pipeline loads models that are NOT licensed for use in a paid product:
+  This pipeline loads a model that is NOT licensed for use in a paid product:
 
     * InsightFace face models (face_analysis/models/*.onnx)
         code = MIT, but the MODELS are "non-commercial research purposes only"
-    * Kim_Vocal_2.onnx (audio_separator/)
-        no stated licence at all
+
+  (The other finding, Kim_Vocal_2.onnx with no licence at all, is RESOLVED — the
+   separator has been dropped from the pipeline, not replaced. It was doing nothing
+   for us: the driving audio is Kokoro TTS, one clean voice with nothing to separate.)
 
   Found 2026-08-11 in the dependency-level pass; Hallo's own MIT licence covers the
   wrapper, not these. See "8 - Model Licence Review.pdf" in Reports/For Legal Counsel.

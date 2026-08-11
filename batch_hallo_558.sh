@@ -34,7 +34,9 @@ while IFS=$'\t' read -r id voice greeting <&3; do
   [ -s "$WAV" ] && { echo "WAV-SKIP $id" >> "$LOG"; continue; }
   RAW=/home/ubuntu/wav/${id}_raw.wav
   printf '%s' "$greeting" | "$KPY" /home/ubuntu/gen_voice.py "$voice" "$RAW" >>"$LOG" 2>&1
-  [ -s "$RAW" ] && ffmpeg -nostdin -y -loglevel error -i "$RAW" -filter:a atempo=1.08 "$WAV" 2>>"$LOG"
+  # 16k mono is REQUIRED: the vocal separator we dropped for licence reasons is what used to
+  # resample the driving audio for wav2vec. Do not remove -ar 16000 while inference.py is patched.
+  [ -s "$RAW" ] && ffmpeg -nostdin -y -loglevel error -i "$RAW" -filter:a atempo=1.08 -ar 16000 -ac 1 "$WAV" 2>>"$LOG"
   [ -s "$WAV" ] && echo "WAV-OK $id" >> "$LOG" || echo "WAV-FAIL $id" >> "$LOG"
 done 3< "$ROSTER"
 
