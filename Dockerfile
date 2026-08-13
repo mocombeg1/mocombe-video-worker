@@ -80,6 +80,14 @@ RUN pip install --index-url https://download.pytorch.org/whl/cu128 --force-reins
 # i.e. a C extension built against numpy 2 running with numpy 1 loaded. Resolve deps properly.
 RUN pip install --force-reinstall "numpy>=2.0,<2.3"
 
+# thinc ships a COMPILED numpy_ops extension, and the wheel resolved by coqui-tts's spacy pin was
+# built against numpy 1. With numpy 2.2.6 in place it raises on import:
+#   thinc/backends/numpy_ops.pyx: ValueError: numpy.dtype size changed ... Expected 96, got 88
+# Proven from a build log, not guessed: BUILD-CHECK printed numpy 2.2.6 and thinc still failed.
+# Reinstall thinc+spacy AFTER the numpy pin so pip resolves the numpy-2 wheels (thinc >= 8.3 /
+# spacy >= 3.8 publish them). Must stay after the numpy step — order is the whole point.
+RUN pip install --force-reinstall --no-cache-dir "thinc>=8.3.4" "spacy>=3.8.2"
+
 # PROVE the numpy ABI is coherent AT BUILD TIME. A broken combination must fail here — loudly, in a
 # build log, for free — rather than in a render that has already burned GPU seconds and a user's
 # patience. Imports the exact module whose failure took the endpoint down, plus the stack that
