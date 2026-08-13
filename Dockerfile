@@ -74,6 +74,15 @@ RUN pip install --index-url https://download.pytorch.org/whl/cu128 --force-reins
 # load failure on a CUDA-12 image. Install the cu128 build to match torch.
 RUN pip install --index-url https://download.pytorch.org/whl/cu128 --force-reinstall --no-deps torchcodec
 
+# FINAL numpy re-pin — must be the LAST pip step touching numpy.
+# requirements.txt pins numpy==1.26.4, but MuseTalk's own requirements are installed AFTER it with
+# numpy unpinned, so pip pulls 2.2.6 back in and coqui-TTS breaks. The build check caught exactly
+# that: "AssertionError: coqui-TTS requires numpy 1.x, got 2.2.6".
+# The ORIGINAL Dockerfile was right to re-pin numpy here — it just re-pinned to the wrong major.
+# No --no-deps: let pip re-resolve, so a package that genuinely cannot live with numpy 1 fails the
+# build here instead of at render time.
+RUN pip install "numpy==1.26.4"
+
 # NO numpy override here. There used to be a `pip install --no-deps "numpy>=2.0,<2.3"` at this
 # point, carried over from the Tier-B/LTX image where scikit-image wanted numpy 2. It is wrong for
 # THIS image and was the actual defect behind a render that died 200s in:
