@@ -19,22 +19,20 @@ coqui-tts  # maintained fork; pulls its own compatible transformers/tokenizers
 
 # --- Lip-sync (MuseTalk) shared deps. MuseTalk uses OpenAI whisper audio features. ---
 openai-whisper==20231117
-# opencv/scipy MUST be numpy-2 builds. 4.10.0.84 and scipy 1.13.1 are numpy-1-era wheels: with
-# numpy 2 loaded, cv2 fails on import with `AttributeError: _ARRAY_API not found` (seen in a build
-# log 2026-08-13, one line after thinc's numpy_ops failure was fixed the same way).
-opencv-python-headless>=4.11.0.86,<5
+opencv-python-headless==4.10.0.84
 imageio==2.34.2
 imageio-ffmpeg==0.5.1
 librosa==0.10.2.post1
 soundfile==0.12.1
-# numpy is PINNED here, not retrofitted after the fact. It was previously left unpinned and then
-# force-reinstalled to 2.x at the END of the Dockerfile — so every compiled dependency above
-# resolved against numpy 1 first and then found numpy 2 underneath it at runtime. That produced two
-# separate ABI failures (thinc, then cv2), each surfacing only when the image ran. Resolving the
-# whole set against numpy 2 from the start is what stops that class of bug, rather than chasing it
-# package by package.
-numpy>=2.0,<2.3
-scipy>=1.14.1,<2
+# numpy is PINNED to 1.x, and that is not a preference — pip states the constraint outright:
+#   coqui-tts 0.26.0 depends on numpy<2.0 and >=1.25.2
+# This is the AVATAR image, and coqui-TTS is its reason to exist, so numpy 1 is the only coherent
+# choice here. Leaving numpy unpinned and then force-installing numpy 2 at the end of the
+# Dockerfile (which is what this image did) put numpy 2 underneath a stack that had correctly
+# resolved for numpy 1 — surfacing as thinc's numpy_ops ValueError and then cv2's
+# `_ARRAY_API not found`, both only at runtime. opencv/scipy stay on their numpy-1 wheels to match.
+numpy==1.26.4
+scipy==1.13.1
 einops==0.8.0
 omegaconf==2.3.0
 huggingface_hub==0.24.6

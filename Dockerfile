@@ -66,27 +66,16 @@ RUN pip install --index-url https://download.pytorch.org/whl/cu128 --force-reins
 # load failure on a CUDA-12 image. Install the cu128 build to match torch.
 RUN pip install --index-url https://download.pytorch.org/whl/cu128 --force-reinstall --no-deps torchcodec
 
-# NUMPY 2: scipy/scikit-image resolved by coqui-tts are built for numpy>=2; forcing numpy 1.26 breaks
-# their imports. numpy 2.2.x is the combination that renders.
+# NO numpy override here. There used to be a `pip install --no-deps "numpy>=2.0,<2.3"` at this
+# point, carried over from the Tier-B/LTX image where scikit-image wanted numpy 2. It is wrong for
+# THIS image and was the actual defect behind a render that died 200s in:
 #
-# `--no-deps` was doing real damage here: it installs numpy WITHOUT letting pip check whether the
-# packages already present can live with it, so pip's own resolver never sees the conflict and
-# nothing in the build complains. The image shipped, and the mismatch surfaced 200 seconds into a
-# production render instead (2026-08-13):
+#   coqui-tts 0.26.0 depends on numpy<2.0 and >=1.25.2      <- pip, stating it plainly
 #
-#   coqui-TTS -> XTTS tokenizer -> spacy -> thinc -> thinc/backends/numpy_ops.pyx
-#   ValueError: numpy.dtype size changed ... Expected 96 from C header, got 88 from PyObject
-#
-# i.e. a C extension built against numpy 2 running with numpy 1 loaded. Resolve deps properly.
-RUN pip install --force-reinstall "numpy>=2.0,<2.3"
-
-# thinc ships a COMPILED numpy_ops extension, and the wheel resolved by coqui-tts's spacy pin was
-# built against numpy 1. With numpy 2.2.6 in place it raises on import:
-#   thinc/backends/numpy_ops.pyx: ValueError: numpy.dtype size changed ... Expected 96, got 88
-# Proven from a build log, not guessed: BUILD-CHECK printed numpy 2.2.6 and thinc still failed.
-# Reinstall thinc+spacy AFTER the numpy pin so pip resolves the numpy-2 wheels (thinc >= 8.3 /
-# spacy >= 3.8 publish them). Must stay after the numpy step — order is the whole point.
-RUN pip install --force-reinstall --no-cache-dir "thinc>=8.3.4" "spacy>=3.8.2"
+# requirements.txt had resolved the whole stack correctly for numpy 1; this step then dropped
+# numpy 2 underneath it with --no-deps, so pip never saw the conflict and the build stayed green
+# while the image was broken. It surfaced as thinc's `numpy.dtype size changed` and then cv2's
+# `_ARRAY_API not found` — two symptoms, one cause. numpy is pinned in requirements.txt now.
 
 # PROVE the numpy ABI is coherent AT BUILD TIME. A broken combination must fail here — loudly, in a
 # build log, for free — rather than in a render that has already burned GPU seconds and a user's
@@ -95,7 +84,10 @@ RUN pip install --force-reinstall --no-cache-dir "thinc>=8.3.4" "spacy>=3.8.2"
 RUN python - <<'PY'
 import numpy
 print("BUILD-CHECK numpy", numpy.__version__, "from", numpy.__file__, flush=True)
-assert numpy.__version__.startswith("2."), f"expected numpy 2.x, got {numpy.__version__}"
+# numpy 1.x is REQUIRED here, not merely tolerated: coqui-TTS pins numpy<2.0, and coqui-TTS is the
+# whole point of the avatar image. Assert it so a future numpy-2 "upgrade" fails here rather than
+# in a render.
+assert numpy.__version__.startswith("1."), f"coqui-TTS requires numpy 1.x, got {numpy.__version__}"
 import thinc.backends.numpy_ops   # the exact import that raised at runtime
 import spacy, cv2, scipy, librosa
 from TTS.tts.layers.xtts.tokenizer import VoiceBpeTokenizer  # the caller that pulled spacy in
