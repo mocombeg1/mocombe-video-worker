@@ -68,7 +68,31 @@ RUN pip install --index-url https://download.pytorch.org/whl/cu128 --force-reins
 
 # NUMPY 2: scipy/scikit-image resolved by coqui-tts are built for numpy>=2; forcing numpy 1.26 breaks
 # their imports. numpy 2.2.x is the combination that renders.
-RUN pip install --force-reinstall --no-deps "numpy>=2.0,<2.3"
+#
+# `--no-deps` was doing real damage here: it installs numpy WITHOUT letting pip check whether the
+# packages already present can live with it, so pip's own resolver never sees the conflict and
+# nothing in the build complains. The image shipped, and the mismatch surfaced 200 seconds into a
+# production render instead (2026-08-13):
+#
+#   coqui-TTS -> XTTS tokenizer -> spacy -> thinc -> thinc/backends/numpy_ops.pyx
+#   ValueError: numpy.dtype size changed ... Expected 96 from C header, got 88 from PyObject
+#
+# i.e. a C extension built against numpy 2 running with numpy 1 loaded. Resolve deps properly.
+RUN pip install --force-reinstall "numpy>=2.0,<2.3"
+
+# PROVE the numpy ABI is coherent AT BUILD TIME. A broken combination must fail here — loudly, in a
+# build log, for free — rather than in a render that has already burned GPU seconds and a user's
+# patience. Imports the exact module whose failure took the endpoint down, plus the stack that
+# reaches it. If this line ever goes red, the build is telling you the truth about the image.
+RUN python - <<'PY'
+import numpy
+print("BUILD-CHECK numpy", numpy.__version__, "from", numpy.__file__, flush=True)
+assert numpy.__version__.startswith("2."), f"expected numpy 2.x, got {numpy.__version__}"
+import thinc.backends.numpy_ops   # the exact import that raised at runtime
+import spacy, cv2, scipy, librosa
+from TTS.tts.layers.xtts.tokenizer import VoiceBpeTokenizer  # the caller that pulled spacy in
+print("BUILD-CHECK numpy/thinc/spacy/cv2/scipy/librosa/TTS all import cleanly", flush=True)
+PY
 
 # MuseTalk source predates numpy 2 (np.float/np.int/np.bool aliases removed). Sweep them.
 RUN find /app/MuseTalk -name '*.py' -exec sed -i -E \
