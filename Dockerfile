@@ -43,9 +43,17 @@ ENV LD_LIBRARY_PATH="/usr/local/lib/python3.10/dist-packages/nvidia/cuda_cupti/l
 COPY requirements.txt /app/requirements.txt
 # openai-whisper's build imports pkg_resources (removed in setuptools 81+). Constrain the PEP517
 # build env to a setuptools that still ships it.
+# openai-whisper is an sdist: pip must RUN its setup.py, which imports pkg_resources (deleted in
+# setuptools 81+). A constraints file does not save you here — pip's build isolation builds each
+# sdist in a FRESH environment and installs the newest setuptools into it, ignoring both the
+# image's `setuptools<81` and PIP_CONSTRAINT. Observed 2026-08-13:
+#   ModuleNotFoundError: No module named 'pkg_resources'
+#   ERROR: Failed to build 'openai-whisper' when getting requirements to build wheel
+# `--no-build-isolation` makes the build use THIS image's interpreter and its pinned
+# setuptools<81 (installed above), which is the version whisper's setup.py expects.
 RUN printf 'setuptools<81\nwheel\n' > /app/build-constraints.txt
 ENV PIP_CONSTRAINT=/app/build-constraints.txt
-RUN pip install -r /app/requirements.txt
+RUN pip install --no-build-isolation -r /app/requirements.txt
 
 # --- Clone MuseTalk (lip-sync). NEEDS-GPU-VERIFY: pin to a commit you validate on the GPU so the
 #     inference CLI/flags in rp_handler.lipsync_musetalk stay stable. ---
